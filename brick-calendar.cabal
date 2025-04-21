@@ -1,0 +1,55 @@
+cabal-version:      3.0
+name:               brick-calendar
+version:            0.1.0
+synopsis:           Calendar widget for the Brick TUI library
+description:        A library providing a month calendar widget for Brick-based terminal user interfaces
+homepage:           https://github.com/ldgrp/brick-calendar
+license:            MIT
+license-file:       LICENSE
+author:             Leo Orpilla III
+maintainer:         leo@ldgrp.me
+category:           User Interfaces
+build-type:         Simple
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Brick.Widgets.Calendar
+  other-modules:       Brick.Widgets.Calendar.Internal.Core
+                      ,Brick.Widgets.Calendar.Internal.Month
+                      ,Brick.Widgets.Calendar.Internal.Utils
+                      ,Brick.Widgets.Calendar.Internal.Actions
+  build-depends:       base >= 4.11 && < 5
+                      ,brick >= 2.0
+                      ,vty >= 5.33
+                      ,time >= 1.9
+                      ,text
+                      ,vector
+                      ,microlens >= 0.4
+                      ,microlens-th >= 0.4
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+test-suite brick-calendar-tests
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Main.hs
+  build-depends:       base
+                      ,brick-calendar
+                      ,brick
+                      ,vty
+                      ,time
+                      ,hspec
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+
+executable calendar-demo
+  hs-source-dirs:      programs
+  main-is:             CalendarDemo.hs
+  build-depends:       base >= 4.11 && < 5
+                      ,brick-calendar
+                      ,brick >= 2.0
+                      ,microlens-platform >= 0.4
+                      ,time > 1.9
+                      ,vty >= 5.33
+  default-language:    Haskell2010
+  ghc-options:         -Wall -threaded 
