@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [created, prereleased]
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        ghc: ['9.2.8', '9.4.7', '9.6.7']
+        cabal: ['3.12.1.0']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: ${{ matrix.cabal }}
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cabal/store
+          dist-newstyle
+        key: ${{ runner.os }}-${{ matrix.ghc }}-cabal-${{ hashFiles('**/*.cabal') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.ghc }}-cabal-
+
+    - name: Update package list
+      run: cabal update
+
+    - name: Run cabal check
+      run: cabal check
+
+    - name: Install HLint
+      run: cabal install hlint
+
+    - name: Run HLint
+      run: ~/.cabal/bin/hlint src/ test/ programs/
+
+    - name: Build
+      run: cabal build all --enable-tests
+
+    - name: Run tests
+      run: cabal test all
+
+    - name: Generate documentation
+      run: cabal haddock
+      if: matrix.ghc == '9.4.7' && matrix.os == 'ubuntu-latest'
+
+  hackage:
+    name: Deploy to Hackage
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    needs: build
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: '9.6.7'
+        cabal-version: '3.12.1.0'
+    
+    - name: Update package list
+      run: cabal update
+    
+    - name: Build source distribution
+      run: cabal sdist
+    
+    - name: Build documentation
+      run: |
+        mkdir -p dist-docs
+        cabal haddock --builddir=dist-docs --haddock-for-hackage --enable-doc
+    
+    - name: Upload to Hackage
+      env:
+        HACKAGE_USERNAME: ${{ secrets.HACKAGE_USERNAME }}
+        HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
+      run: |
+        # Find the most recently created sdist tarball
+        export PACKAGE_PATH=$(find dist-newstyle/sdist -name "*.tar.gz" | sort -V | tail -n1)
+        # Find the documentation tarball
+        export DOC_PATH=$(find dist-docs -name "*-docs.tar.gz")
+        
+        if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
+          echo "Uploading CANDIDATE for pre-release: $PACKAGE_PATH"
+          cabal upload "$PACKAGE_PATH" # No --publish for candidate
+          echo "Uploading CANDIDATE documentation: $DOC_PATH"
+          cabal upload -d "$DOC_PATH"   # No --publish for candidate docs
+        else
+          echo "Uploading PUBLISHED package for full release: $PACKAGE_PATH"
+          cabal upload --publish "$PACKAGE_PATH" # Publish for full release
+          echo "Uploading PUBLISHED documentation: $DOC_PATH"
+          cabal upload -d --publish "$DOC_PATH"  # Publish docs for full release
+        fi 
