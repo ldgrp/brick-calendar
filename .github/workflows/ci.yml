@@ -92,8 +92,7 @@ jobs:
     
     - name: Upload to Hackage
       env:
-        HACKAGE_USERNAME: ${{ secrets.HACKAGE_USERNAME }}
-        HACKAGE_PASSWORD: ${{ secrets.HACKAGE_PASSWORD }}
+        HACKAGE_AUTH_TOKEN: ${{ secrets.HACKAGE_AUTH_TOKEN }}
       run: |
         # Find the most recently created sdist tarball
         export PACKAGE_PATH=$(find dist-newstyle/sdist -name "*.tar.gz" | sort -V | tail -n1)
@@ -102,12 +101,12 @@ jobs:
         
         if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
           echo "Uploading CANDIDATE for pre-release: $PACKAGE_PATH"
-          cabal upload "$PACKAGE_PATH" # No --publish for candidate
+          cabal upload --token="$HACKAGE_AUTH_TOKEN" "$PACKAGE_PATH" # No --publish for candidate
           echo "Uploading CANDIDATE documentation: $DOC_PATH"
-          cabal upload -d "$DOC_PATH"   # No --publish for candidate docs
+          cabal upload -d --token="$HACKAGE_AUTH_TOKEN" "$DOC_PATH"   # No --publish for candidate docs
         else
           echo "Uploading PUBLISHED package for full release: $PACKAGE_PATH"
-          cabal upload --publish "$PACKAGE_PATH" # Publish for full release
+          cabal upload --publish --token="$HACKAGE_AUTH_TOKEN" "$PACKAGE_PATH" # Publish for full release
           echo "Uploading PUBLISHED documentation: $DOC_PATH"
-          cabal upload -d --publish "$DOC_PATH"  # Publish docs for full release
+          cabal upload -d --publish --token="$HACKAGE_AUTH_TOKEN" "$DOC_PATH"  # Publish docs for full release
         fi 
