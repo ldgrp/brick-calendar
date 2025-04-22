@@ -1,15 +1,21 @@
 cabal-version:      3.0
 name:               brick-calendar
-version:            0.1.0
+version:            0.1.0.0
 synopsis:           Calendar widget for the Brick TUI library
 description:        A library providing a month calendar widget for Brick-based terminal user interfaces
 homepage:           https://github.com/ldgrp/brick-calendar
+bug-reports:        https://github.com/ldgrp/brick-calendar/issues
 license:            MIT
 license-file:       LICENSE
 author:             Leo Orpilla III
 maintainer:         leo@ldgrp.me
-category:           User Interfaces
+category:           User Interfaces, Console, TUI
 build-type:         Simple
+
+source-repository head
+  type:     git
+  location: https://github.com/ldgrp/brick-calendar.git
+  branch:   main
 
 library
   hs-source-dirs:      src
