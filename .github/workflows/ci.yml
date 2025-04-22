@@ -44,10 +44,15 @@ jobs:
       run: cabal check
 
     - name: Install HLint
-      run: cabal install hlint
+      uses: haskell/actions/hlint-setup@v2
+      with:
+        version: '3.5'
 
     - name: Run HLint
-      run: ~/.cabal/bin/hlint src/ test/ programs/
+      uses: haskell/actions/hlint-run@v2
+      with:
+        path: '["src/", "test/", "programs/"]'
+        fail-on: error
 
     - name: Build
       run: cabal build all --enable-tests
