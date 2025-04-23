@@ -1,5 +1,8 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Brick.Widgets.Calendar.Internal.Actions
-  ( moveUp
+  ( -- * Navigation actions
+    moveUp
   , moveDown
   , moveLeft
   , moveRight
@@ -7,46 +10,51 @@ module Brick.Widgets.Calendar.Internal.Actions
   , setMonthAfter
   , setYearBefore
   , setYearAfter
+    -- * Event handler for common calendar navigation
+    -- You can also use the individual actions above to create your own custom event handler
+  , handleCalendarEvent
   ) where
 
 import Data.Time
 import Data.Time.Calendar.Month
+import Brick ( modify, EventM, BrickEvent(..) )
+import qualified Graphics.Vty as V
 
 import Brick.Widgets.Calendar.Internal.Core
 
-moveUp :: CalendarState -> CalendarState
+moveUp :: CalendarState n -> CalendarState n
 moveUp =
   navigateSelection (addDays (-7))
 
-moveDown :: CalendarState -> CalendarState
+moveDown :: CalendarState n -> CalendarState n
 moveDown =
   navigateSelection (addDays 7)
 
-moveLeft :: CalendarState -> CalendarState
+moveLeft :: CalendarState n -> CalendarState n
 moveLeft =
   navigateSelection (addDays (-1))
 
-moveRight :: CalendarState -> CalendarState
+moveRight :: CalendarState n -> CalendarState n
 moveRight =
   navigateSelection (addDays 1)
 
-setMonthBefore :: CalendarState -> CalendarState
+setMonthBefore :: CalendarState n -> CalendarState n
 setMonthBefore =
   navigateMonth (addMonths (-1))
 
-setMonthAfter :: CalendarState -> CalendarState
+setMonthAfter :: CalendarState n -> CalendarState n
 setMonthAfter =
   navigateMonth (addMonths 1)
 
-setYearBefore :: CalendarState -> CalendarState
+setYearBefore :: CalendarState n -> CalendarState n
 setYearBefore =
   navigateMonth (addMonths (-12))
 
-setYearAfter :: CalendarState -> CalendarState
+setYearAfter :: CalendarState n -> CalendarState n
 setYearAfter =
   navigateMonth (addMonths 12)
 
-navigateSelection :: (Day -> Day) -> CalendarState -> CalendarState
+navigateSelection :: (Day -> Day) -> CalendarState n -> CalendarState n
 navigateSelection dayTransform s =
   case calSelectedDay s of
     Nothing -> 
@@ -61,7 +69,7 @@ navigateSelection dayTransform s =
          -- Otherwise just update the selected day
          else s { calSelectedDay = Just newDay }
 
-navigateMonth :: (Month -> Month) -> CalendarState -> CalendarState
+navigateMonth :: (Month -> Month) -> CalendarState n -> CalendarState n
 navigateMonth monthTransform s = 
   let currentYM = YearMonth (calYear s) (calMonth s)
       newYM = monthTransform currentYM
@@ -77,3 +85,29 @@ navigateMonth monthTransform s =
           in Just $ fromGregorian newYear newMonth adjustedDay
           
   in s { calYear = newYear, calMonth = newMonth, calSelectedDay = newDay }
+
+handleCalendarEvent :: BrickEvent n e -> EventM n (CalendarState n) ()
+handleCalendarEvent = \case
+  -- Navigate between days
+  VtyEvent (V.EvKey V.KUp [])      -> modify moveUp
+  VtyEvent (V.EvKey V.KDown [])    -> modify moveDown
+  VtyEvent (V.EvKey V.KLeft [])    -> modify moveLeft
+  VtyEvent (V.EvKey V.KRight [])   -> modify moveRight
+  VtyEvent (V.EvKey (V.KChar 'h') []) -> modify moveLeft
+  VtyEvent (V.EvKey (V.KChar 'l') []) -> modify moveRight
+  VtyEvent (V.EvKey (V.KChar 'j') []) -> modify moveDown
+  VtyEvent (V.EvKey (V.KChar 'k') []) -> modify moveUp
+  
+  -- Navigate between months
+  VtyEvent (V.EvKey (V.KChar '[') []) -> modify setMonthBefore
+  VtyEvent (V.EvKey (V.KChar ']') []) -> modify setMonthAfter
+  VtyEvent (V.EvKey (V.KChar 'H') []) -> modify setMonthBefore
+  VtyEvent (V.EvKey (V.KChar 'L') []) -> modify setMonthAfter
+  
+  -- Navigate between years
+  VtyEvent (V.EvKey (V.KChar '{') []) -> modify setYearBefore
+  VtyEvent (V.EvKey (V.KChar '}') []) -> modify setYearAfter
+  VtyEvent (V.EvKey (V.KChar 'J') []) -> modify setYearBefore
+  VtyEvent (V.EvKey (V.KChar 'K') []) -> modify setYearAfter
+
+  _ -> return ()

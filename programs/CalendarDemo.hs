@@ -3,32 +3,30 @@
 module Main where
 
 import Brick
-import Brick.Widgets.Core
 import Brick.Widgets.Border
 import qualified Brick.Widgets.Center as C
 import Brick.Widgets.Calendar
-import qualified Brick.AttrMap as A
 import qualified Graphics.Vty as V
 import Data.Time
-import Control.Monad
 import System.IO
 import Lens.Micro.Platform
 
 -- | Data type to identify our widgets
-data Name = Calendar1
+data AppName = Calendar1
+    | Calendar1Resource CalendarResource
     deriving (Eq, Ord, Show)
 
 -- | App state
 newtype AppState = AppState
-    { calendar :: CalendarState
+    { calendar :: CalendarState AppName
     }
 
 -- | Lens for the calendar field of AppState
-calendarL :: Lens' AppState CalendarState
+calendarL :: Lens' AppState (CalendarState AppName)
 calendarL = lens calendar (\s c -> s { calendar = c })
 
 -- | Main app definition
-app :: App AppState e CalendarResource
+app :: App AppState e AppName
 app = App
     { appDraw = drawUI
     , appChooseCursor = showFirstCursor
@@ -42,18 +40,18 @@ initialState :: IO AppState
 initialState = do
     today <- utctDay <$> getCurrentTime
     let (year, month, _) = toGregorian today
-    let calConfig = defaultCalendarConfig
+    let config = defaultCalendarConfig
                     { _showDayLabels = True
                     , _dayLabelStyle = DistinctInitials
                     , _outsideMonthDisplay = ShowDimmed
                     , _weekStart = Sunday
                     }
     return AppState
-        { calendar = CalendarState year month (Just today) calConfig
+        { calendar = CalendarState year month (Just today) config Calendar1Resource
         }
 
 -- | Draw the UI
-drawUI :: AppState -> [Widget CalendarResource]
+drawUI :: AppState -> [Widget AppName]
 drawUI s = [C.center ((border (padAll 1 ui) <=> config) <+> hLimit 40 help)]
   where
     config = vBox
@@ -81,7 +79,7 @@ drawUI s = [C.center ((border (padAll 1 ui) <=> config) <+> hLimit 40 help)]
         ]
 
 -- | Display the current configuration
-displayConfig :: CalendarState -> Widget n
+displayConfig :: CalendarState AppName -> Widget n
 displayConfig s =
     let config = calConfig s
         weekStartText = show (config ^. weekStart)
@@ -94,9 +92,7 @@ displayConfig s =
                          Hide -> "Hide"
                          ShowDimmed -> "Show dimmed"
                          ShowNormal -> "Show normal"
-        selectedText = case calSelectedDay s of
-                         Nothing -> "None"
-                         Just day -> showGregorian day
+        selectedText = maybe "None" showGregorian (calSelectedDay s)
     in withAttr (attrName "config") $
        vBox [ str $ "Week starts on: " ++ weekStartText
             , str $ "Day label style: " ++ labelStyleText
@@ -106,7 +102,7 @@ displayConfig s =
             ]
 
 -- | Handle events
-handleEvent :: BrickEvent CalendarResource e -> EventM CalendarResource AppState ()
+handleEvent :: BrickEvent AppName e -> EventM AppName AppState ()
 handleEvent (VtyEvent (V.EvKey V.KEsc [])) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleEvent (VtyEvent (V.EvKey V.KEnter [])) = halt
@@ -151,26 +147,8 @@ handleEvent (VtyEvent (V.EvKey (V.KChar 'w') [])) = do
                          _ -> error "Not implemented"
         modify $ \s -> s { calConfig = config & weekStart .~ newStart }
 
--- Handle calendar keyboard events
-handleEvent (VtyEvent (V.EvKey V.KUp [])) = calendarL %= moveUp
-handleEvent (VtyEvent (V.EvKey V.KDown [])) = calendarL %= moveDown
-handleEvent (VtyEvent (V.EvKey V.KLeft [])) = calendarL %= moveLeft
-handleEvent (VtyEvent (V.EvKey V.KRight [])) = calendarL %= moveRight
-handleEvent (VtyEvent (V.EvKey (V.KChar '[') [])) = calendarL %= setMonthBefore
-handleEvent (VtyEvent (V.EvKey (V.KChar ']') [])) = calendarL %= setMonthAfter
-handleEvent (VtyEvent (V.EvKey (V.KChar '{') [])) = calendarL %= setYearBefore
-handleEvent (VtyEvent (V.EvKey (V.KChar '}') [])) = calendarL %= setYearAfter
-
--- Handle vim-like navigation
-handleEvent (VtyEvent (V.EvKey (V.KChar 'h') [])) = calendarL %= moveLeft
-handleEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = calendarL %= moveDown
-handleEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = calendarL %= moveUp
-handleEvent (VtyEvent (V.EvKey (V.KChar 'l') [])) = calendarL %= moveRight
-handleEvent (VtyEvent (V.EvKey (V.KChar 'H') [])) = calendarL %= setMonthBefore
-handleEvent (VtyEvent (V.EvKey (V.KChar 'L') [])) = calendarL %= setMonthAfter
-handleEvent (VtyEvent (V.EvKey (V.KChar 'J') [])) = calendarL %= setYearBefore
-handleEvent (VtyEvent (V.EvKey (V.KChar 'K') [])) = calendarL %= setYearAfter
-handleEvent _ = return ()
+-- Use the default calendar event handler for navigation
+handleEvent e = zoom calendarL $ handleCalendarEvent e
 
 -- | Main function
 main :: IO ()

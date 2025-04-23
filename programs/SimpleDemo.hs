@@ -6,19 +6,24 @@ import Brick
 import Brick.Widgets.Border
 import qualified Brick.Widgets.Center as C
 import Brick.Widgets.Calendar
-import qualified Brick.AttrMap as A
 import qualified Graphics.Vty as V
 import Data.Time
-import Control.Monad
 import System.IO
+import Lens.Micro.Platform
 
--- App state with calendar
+data AppName = CalName CalendarResource
+  deriving (Show, Eq, Ord)
+
+calendarL :: Lens' AppState (CalendarState AppName)
+calendarL = lens calendar (\s a -> s { calendar = a })
+
+-- | App state with calendar
 newtype AppState = AppState
-    { calendar :: CalendarState
+    { calendar :: CalendarState AppName
     }
 
 -- Initialize the app state
-mkCalendarState :: Day -> CalendarState
+mkCalendarState :: Day -> CalendarState AppName
 mkCalendarState day = 
   let (year, month, _) = toGregorian day
       config = defaultCalendarConfig
@@ -27,10 +32,10 @@ mkCalendarState day =
                 , _outsideMonthDisplay = ShowDimmed
                 , _weekStart = Sunday
                 }
-  in CalendarState year month (Just day) config
+  in CalendarState year month (Just day) config CalName
 
 -- Main app definition
-app :: App AppState e CalendarResource
+app :: App AppState e AppName
 app = App
     { appDraw = drawUI
     , appChooseCursor = showFirstCursor
@@ -40,30 +45,17 @@ app = App
     }
 
 -- Draw the UI
-drawUI :: AppState -> [Widget CalendarResource]
+drawUI :: AppState -> [Widget AppName]
 drawUI s = [C.center $ border $ padAll 1 $ renderCalendar (calendar s)]
 
--- Handle events
-handleEvent :: BrickEvent CalendarResource e -> EventM CalendarResource AppState ()
+-- | Handle events
+handleEvent :: BrickEvent AppName e -> EventM AppName AppState ()
 handleEvent (VtyEvent (V.EvKey V.KEsc [])) = halt
 handleEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleEvent (VtyEvent (V.EvKey V.KUp [])) = 
-    modify $ \s -> s { calendar = moveUp (calendar s) }
-handleEvent (VtyEvent (V.EvKey V.KDown [])) = 
-    modify $ \s -> s { calendar = moveDown (calendar s) }
-handleEvent (VtyEvent (V.EvKey V.KLeft [])) = 
-    modify $ \s -> s { calendar = moveLeft (calendar s) }
-handleEvent (VtyEvent (V.EvKey V.KRight [])) = 
-    modify $ \s -> s { calendar = moveRight (calendar s) }
-handleEvent (VtyEvent (V.EvKey (V.KChar '[') [])) = 
-    modify $ \s -> s { calendar = setMonthBefore (calendar s) }
-handleEvent (VtyEvent (V.EvKey (V.KChar ']') [])) = 
-    modify $ \s -> s { calendar = setMonthAfter (calendar s) }
-handleEvent (VtyEvent (V.EvKey (V.KChar '{') [])) = 
-    modify $ \s -> s { calendar = setYearBefore (calendar s) }
-handleEvent (VtyEvent (V.EvKey (V.KChar '}') [])) = 
-    modify $ \s -> s { calendar = setYearAfter (calendar s) }
-handleEvent _ = return ()
+
+-- Use the built-in calendar event handler for navigation
+handleEvent e = do
+  zoom calendarL $ handleCalendarEvent e
 
 -- Main function
 main :: IO ()

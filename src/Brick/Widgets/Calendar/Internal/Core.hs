@@ -76,13 +76,12 @@ data CalendarResource =
   deriving (Show, Eq, Ord)
 
 -- | The state of the calendar widget. Make this part of your application state.
-data CalendarState = CalendarState
-  { calYear :: Integer       -- ^ Current year
-  , calMonth :: Int          -- ^ Current month (1-12)
-  , calSelectedDay :: Maybe Day  -- ^ Currently selected day, if any
-  , calConfig :: CalendarConfig  -- ^ Calendar configuration
-  } deriving (Show, Eq)
-
-
+data CalendarState n = CalendarState
+  { calYear :: Integer                     -- ^ Current year
+  , calMonth :: Int                        -- ^ Current month (1-12)
+  , calSelectedDay :: Maybe Day            -- ^ Currently selected day, if any
+  , calConfig :: CalendarConfig            -- ^ Calendar configuration
+  , calendarName :: CalendarResource -> n  -- ^ Constructor for wrapping calendar resources in the application's resource name type
+  }
 
 makeLenses ''CalendarConfig 

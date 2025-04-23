@@ -17,31 +17,31 @@ import Brick.Widgets.Calendar.Internal.Core
 import Brick.Widgets.Calendar.Internal.Utils
 
 -- | Render a month calendar widget
-renderCalendar :: CalendarState -> Widget CalendarResource
+renderCalendar :: Ord n => CalendarState n -> Widget n
 renderCalendar state@CalendarState{..} =
   vBox [ renderHeader state
        , if calConfig ^. showDayLabels
          then renderDayLabels calConfig
          else emptyWidget
-       , renderDays calConfig calYear calMonth calSelectedDay
+       , renderDays calConfig calYear calMonth calSelectedDay calendarName
        ]
 
 -- | Render the calendar header with month/year and navigation buttons
-renderHeader :: CalendarState -> Widget CalendarResource
+renderHeader :: Ord n => CalendarState n -> Widget n
 renderHeader CalendarState{..} =
   let monthText = getMonthLabel calConfig calYear calMonth
-      prevButton = clickable CalendarPrev $ 
+      prevButton = clickable (calendarName CalendarPrev) $ 
                    withAttr (attrName "calendar.nav") $ 
                    str " << "
-      monthLabel = clickable (CalendarMonth (fromIntegral calYear) calMonth) $ 
+      monthLabel = clickable (calendarName (CalendarMonth (fromIntegral calYear) calMonth)) $ 
                    txt monthText
-      nextButton = clickable CalendarNext $ 
+      nextButton = clickable (calendarName CalendarNext) $ 
                    withAttr (attrName "calendar.nav") $ 
                    str " >> "
   in hLimit 20 $ hCenter $ hBox [prevButton, monthLabel, nextButton]
 
 -- | Render the day labels (S M T W T F S)
-renderDayLabels :: CalendarConfig -> Widget CalendarResource
+renderDayLabels :: CalendarConfig -> Widget n
 renderDayLabels config =
   let labels = getWeekDayLabels config
       -- Create evenly spaced day labels using padRight
@@ -52,8 +52,8 @@ renderDayLabels config =
   in hBox $ map makeLabel paddedLabels
 
 -- | Render the days of the month
-renderDays :: CalendarConfig -> Integer -> Int -> Maybe Day -> Widget CalendarResource
-renderDays config year month selectedDay =
+renderDays :: Ord n => CalendarConfig -> Integer -> Int -> Maybe Day -> (CalendarResource -> n) -> Widget n
+renderDays config year month selectedDay nameF =
   let yearMonth = YearMonth year month
       daysInMonth = periodLength yearMonth
       firstDay = getFirstDayOfMonth year month
@@ -84,7 +84,6 @@ renderDays config year month selectedDay =
       YearMonth nextYear nextMonth = nextYearMonth
       
       -- Calculate days needed for a standard 6-row calendar (42 days total)
-      -- Direct calculation without intermediate variables
       totalDays = length prevDays + length currentDays
       daysNeeded = 42 - totalDays  -- 6 rows × 7 days
       
@@ -122,7 +121,7 @@ renderDays config year month selectedDay =
                       else formatDayNumber config day
                       
             -- Create clickable day widget with appropriate resource identifier
-            baseDayWidget = clickable (CalendarDay (fromIntegral y) m d) $
+            baseDayWidget = clickable (nameF (CalendarDay (fromIntegral y) m d)) $
                            hLimit 3 $ withAttr finalAttr (txt dayText)
                            
             -- Add padding except for the last item in each row

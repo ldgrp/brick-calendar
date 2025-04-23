@@ -35,7 +35,10 @@ module Brick.Widgets.Calendar
   , setYearBefore
   , setYearAfter
 
-  -- * Configuration
+    -- * Pre-built event handler
+  , handleCalendarEvent
+
+    -- * Configuration
   , CalendarConfig(..)
   , DayLabelStyle(..)
   , OutsideMonthDisplay(..)
