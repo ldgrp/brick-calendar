@@ -8,7 +8,7 @@ main :: IO ()
 main = hspec $ do
   describe "Calendar Navigation" $ do
     let standardState year month day = 
-          CalendarState year month (Just $ fromGregorian year month day) defaultCalendarConfig
+          CalendarState year month (Just $ fromGregorian year month day) defaultCalendarConfig id
     
     describe "Directional Movement" $ do
       it "correctly moves selection up" $ do
