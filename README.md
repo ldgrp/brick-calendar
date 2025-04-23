@@ -24,9 +24,12 @@ cabal install brick-calendar
 ## Usage
 
 ```haskell
+-- Define a resource name type
+data AppName = CalName CalendarResource
+  deriving (Show, Eq, Ord)
 
--- 1. Create a calendar state from a date
-mkCalendarState :: Day -> CalendarState
+-- Create a calendar state from a date
+mkCalendarState :: Day -> CalendarState AppName
 mkCalendarState day = 
   let (year, month, _) = toGregorian day
       config = defaultCalendarConfig
@@ -35,43 +38,17 @@ mkCalendarState day =
                 , _showDayLabels = True
                 , _outsideMonthDisplay = ShowDimmed
                 }
-  in CalendarState year month (Just day) config
-  -- CalendarState takes:
-  --   year: Integer - The year to display
-  --   month: Int - The month to display (1-12)
-  --   selected day: Maybe Day - Currently selected day (if any)
-  --   config: CalendarConfig - Display configuration
+  in CalendarState year month (Just day) config CalName
 
--- 2. Render the calendar in your drawing function
--- renderCalendar returns a Widget that you can incorporate
--- into your UI layout like any other Brick widget
-myDrawUI :: CalendarState -> [Widget n]
-myDrawUI calState = 
-  [center $ border $ renderCalendar calState]
+-- Render the calendar
+drawUI :: AppState -> [Widget AppName]
+drawUI s = [center $ border $ padAll 1 $ renderCalendar (calendar s)]
 
--- 3. Handle navigation events in your event handler
-handleCalendarEvent :: BrickEvent n e -> EventM n CalendarState ()
-handleCalendarEvent = \case
-  -- Navigate between days
-  VtyEvent (V.EvKey V.KUp [])      -> modify moveUp
-  VtyEvent (V.EvKey V.KDown [])    -> modify moveDown
-  VtyEvent (V.EvKey V.KLeft [])    -> modify moveLeft
-  VtyEvent (V.EvKey V.KRight [])   -> modify moveRight
-  
-  -- Navigate between months
-  VtyEvent (V.EvKey (V.KChar '[') []) -> modify setMonthBefore
-  VtyEvent (V.EvKey (V.KChar ']') []) -> modify setMonthAfter
-  
-  -- Navigate between years
-  VtyEvent (V.EvKey (V.KChar '{') []) -> modify setYearBefore
-  VtyEvent (V.EvKey (V.KChar '}') []) -> modify setYearAfter
-  
-  _ -> return ()
-
--- 4. Get the selected date
-case calSelectedDay calState of
-  Just day -> showGregorian day
-  Nothing  -> "No date selected"
+-- Handle calendar navigation events
+handleEvent :: BrickEvent AppName e -> EventM AppName AppState ()
+handleEvent (VtyEvent (V.EvKey V.KEsc [])) = halt
+handleEvent e = 
+  zoom calendarL $ handleCalendarEvent e
 ```
 
-See `programs/SimpleDemo.hs` for a minimal working example.
+See `programs/SimpleDemo.hs` for a complete working example.

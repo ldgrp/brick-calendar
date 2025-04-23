@@ -2,7 +2,9 @@ cabal-version:      3.0
 name:               brick-calendar
 version:            0.1.0.0
 synopsis:           Calendar widget for the Brick TUI library
-description:        A library providing a month calendar widget for Brick-based terminal user interfaces
+description:        
+  A library providing a calendar widget for <https://hackage.haskell.org/package/brick Brick>-based terminal user interfaces.
+  See <https://github.com/ldgrp/brick-calendar/tree/main/README.md the README file> and <https://github.com/ldgrp/brick-calendar/tree/main/programs demo programs>.
 homepage:           https://github.com/ldgrp/brick-calendar
 bug-reports:        https://github.com/ldgrp/brick-calendar/issues
 license:            MIT
@@ -11,6 +13,7 @@ author:             Leo Orpilla III
 maintainer:         leo@ldgrp.me
 category:           User Interfaces, Console, TUI
 build-type:         Simple
+extra-doc-files:    README.md
 
 source-repository head
   type:     git
@@ -66,6 +69,19 @@ executable simple-demo
   build-depends:       base >= 4.11 && < 5
                       ,brick-calendar
                       ,brick >= 2.8.3 && < 2.9
+                      ,microlens-platform >= 0.4.4 && < 0.5
+                      ,time >= 1.12.2 && < 1.13
+                      ,vty >= 6.4 && < 6.5
+  default-language:    Haskell2010
+  ghc-options:         -Wall -threaded
+
+executable dual-calendar-demo
+  hs-source-dirs:      programs
+  main-is:             DualCalendarDemo.hs
+  build-depends:       base >= 4.11 && < 5
+                      ,brick-calendar
+                      ,brick >= 2.8.3 && < 2.9
+                      ,microlens-platform >= 0.4.4 && < 0.5
                       ,time >= 1.12.2 && < 1.13
                       ,vty >= 6.4 && < 6.5
   default-language:    Haskell2010
