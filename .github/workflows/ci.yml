@@ -5,8 +5,6 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  release:
-    types: [released, prereleased]
 
 jobs:
   build:
@@ -62,51 +60,4 @@ jobs:
 
     - name: Generate documentation
       run: cabal haddock
-      if: matrix.ghc == '9.4.7' && matrix.os == 'ubuntu-latest'
-
-  hackage:
-    name: Deploy to Hackage
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    needs: build
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Haskell
-      uses: haskell-actions/setup@v2
-      with:
-        ghc-version: '9.6.7'
-        cabal-version: '3.12.1.0'
-    
-    - name: Update package list
-      run: cabal update
-    
-    - name: Build source distribution
-      run: cabal sdist
-    
-    - name: Build documentation
-      run: |
-        mkdir -p dist-docs
-        cabal haddock --builddir=dist-docs --haddock-for-hackage --enable-doc
-    
-    - name: Upload to Hackage
-      env:
-        HACKAGE_AUTH_TOKEN: ${{ secrets.HACKAGE_AUTH_TOKEN }}
-      run: |
-        # Find the most recently created sdist tarball
-        export PACKAGE_PATH=$(find dist-newstyle/sdist -name "*.tar.gz" | sort -V | tail -n1)
-        # Find the documentation tarball
-        export DOC_PATH=$(find dist-docs -name "*-docs.tar.gz")
-        
-        if [[ "${{ github.event.release.prerelease }}" == "true" ]]; then
-          echo "Uploading CANDIDATE for pre-release: $PACKAGE_PATH"
-          cabal upload --token="$HACKAGE_AUTH_TOKEN" "$PACKAGE_PATH" # No --publish for candidate
-          echo "Uploading CANDIDATE documentation: $DOC_PATH"
-          cabal upload -d --token="$HACKAGE_AUTH_TOKEN" "$DOC_PATH"   # No --publish for candidate docs
-        else
-          echo "Uploading PUBLISHED package for full release: $PACKAGE_PATH"
-          cabal upload --publish --token="$HACKAGE_AUTH_TOKEN" "$PACKAGE_PATH" # Publish for full release
-          echo "Uploading PUBLISHED documentation: $DOC_PATH"
-          cabal upload -d --publish --token="$HACKAGE_AUTH_TOKEN" "$DOC_PATH"  # Publish docs for full release
-        fi 
+      if: matrix.ghc == '9.4.7' && matrix.os == 'ubuntu-latest' 
